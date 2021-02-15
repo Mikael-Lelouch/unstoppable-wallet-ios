@@ -6,7 +6,7 @@ class EthereumKitManager {
     weak var ethereumRpcModeSettingsManager: IEthereumRpcModeSettingsManager?
 
     private let appConfigProvider: IAppConfigProvider
-    weak var ethereumKit: EthereumKit.Kit?
+    weak var evmKit: EthereumKit.Kit?
 
     private var currentAccount: Account?
 
@@ -14,37 +14,40 @@ class EthereumKitManager {
         self.appConfigProvider = appConfigProvider
     }
 
-    func ethereumKit(account: Account) throws -> EthereumKit.Kit {
-        if let ethereumKit = ethereumKit, let currentAccount = currentAccount, currentAccount == account {
-            return ethereumKit
+    func evmKit(account: Account) throws -> EthereumKit.Kit {
+        if let evmKit = evmKit, let currentAccount = currentAccount, currentAccount == account {
+            return evmKit
         }
 
         guard case let .mnemonic(words, _) = account.type, words.count == 12 else {
             throw AdapterError.unsupportedAccount
         }
 
-        let rpcApi: SyncSource = .infuraWebSocket(id: appConfigProvider.infuraCredentials.id, secret: appConfigProvider.infuraCredentials.secret)
+        let networkType: NetworkType = appConfigProvider.testMode ? .ropsten : .ethMainNet
 
-        let ethereumKit = try EthereumKit.Kit.instance(
+        guard let syncSource = EthereumKit.Kit.infuraWebsocketSyncSource(networkType: networkType, projectId: appConfigProvider.infuraCredentials.id, projectSecret: appConfigProvider.infuraCredentials.secret) else {
+            throw AdapterError.wrongParameters
+        }
+
+        let evmKit = try EthereumKit.Kit.instance(
                 words: words,
-                syncMode: .api,
-                networkType: appConfigProvider.testMode ? .ropsten : .mainNet,
-                rpcApi: rpcApi,
+                networkType: networkType,
+                syncSource: syncSource,
                 etherscanApiKey: appConfigProvider.etherscanKey,
                 walletId: account.id,
                 minLogLevel: .error
         )
 
-        ethereumKit.start()
+        evmKit.start()
 
-        self.ethereumKit = ethereumKit
+        self.evmKit = evmKit
         currentAccount = account
 
-        return ethereumKit
+        return evmKit
     }
 
     var statusInfo: [(String, Any)]? {
-        ethereumKit?.statusInfo()
+        evmKit?.statusInfo()
     }
 
 }
