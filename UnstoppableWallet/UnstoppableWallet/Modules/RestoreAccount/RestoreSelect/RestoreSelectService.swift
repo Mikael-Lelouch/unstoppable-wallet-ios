@@ -36,27 +36,16 @@ class RestoreSelectService {
         self.enableCoinsService = enableCoinsService
         self.coinSettingsService = coinSettingsService
 
-        enableCoinsService.enableCoinsObservable
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-                .subscribe(onNext: { [weak self] coins in
-                    let configuredCoins = coins.map { ConfiguredCoin(coin: $0) }
-                    self?.enable(configuredCoins: configuredCoins, sortCoins: true)
-                })
-                .disposed(by: disposeBag)
-
-        coinSettingsService.approveEnableCoinObservable
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-                .subscribe(onNext: { [weak self] coinWithSettings in
-                    self?.handleApproveEnable(coin: coinWithSettings.coin, settingsArray: coinWithSettings.settingsArray)
-                })
-                .disposed(by: disposeBag)
-
-        coinSettingsService.rejectEnableCoinObservable
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-                .subscribe(onNext: { [weak self] coin in
-                    self?.cancelEnableCoinRelay.accept(coin)
-                })
-                .disposed(by: disposeBag)
+        subscribe(disposeBag, enableCoinsService.enableCoinsObservable) { [weak self] coins in
+            let configuredCoins = coins.map { ConfiguredCoin(coin: $0) }
+            self?.enable(configuredCoins: configuredCoins, sortCoins: true)
+        }
+        subscribe(disposeBag, coinSettingsService.approveEnableCoinObservable) { [weak self] coinWithSettings in
+            self?.handleApproveEnable(coin: coinWithSettings.coin, settingsArray: coinWithSettings.settingsArray)
+        }
+        subscribe(disposeBag, coinSettingsService.rejectEnableCoinObservable) { [weak self] coin in
+            self?.cancelEnableCoinRelay.accept(coin)
+        }
 
         (featuredCoins, coins) = coinManager.groupedCoins
 
@@ -68,7 +57,7 @@ class RestoreSelectService {
         enabledCoins.contains { $0.coin == coin }
     }
 
-    private func item(coin: Coin) -> Item? {
+    private func item(coin: Coin) -> Item {
         Item(coin: coin, enabled: isEnabled(coin: coin))
     }
 
@@ -100,8 +89,8 @@ class RestoreSelectService {
         let filteredCoins = filtered(coins: coins)
 
         state = State(
-                featuredItems: filteredFeaturedCoins.compactMap { item(coin: $0) },
-                items: filteredCoins.compactMap { item(coin: $0) }
+                featuredItems: filteredFeaturedCoins.map { item(coin: $0) },
+                items: filteredCoins.map { item(coin: $0) }
         )
     }
 
