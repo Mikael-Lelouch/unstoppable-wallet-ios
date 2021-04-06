@@ -23,8 +23,7 @@ class EnabledWallet: Record {
 
     required init(row: Row) {
         coinId = row[Columns.coinId]
-//        coinSettingsId = row[Columns.coinSettingsId]
-        coinSettingsId = ""
+        coinSettingsId = row[Columns.coinSettingsId]
         accountId = row[Columns.accountId]
 
         super.init(row: row)
@@ -32,7 +31,7 @@ class EnabledWallet: Record {
 
     override func encode(to container: inout PersistenceContainer) {
         container[Columns.coinId] = coinId
-//        container[Columns.coinSettingsId] = coinSettingsId
+        container[Columns.coinSettingsId] = coinSettingsId
         container[Columns.accountId] = accountId
     }
 
