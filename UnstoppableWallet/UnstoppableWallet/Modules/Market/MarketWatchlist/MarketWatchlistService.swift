@@ -18,7 +18,6 @@ class MarketWatchlistService: IMarketMultiSortHeaderService {
     }
 
     private var coinUids = [String]()
-    private var marketInfos = [MarketInfo]()
 
     private let sortingFieldRelay = PublishRelay<MarketModule.SortingField>()
     var sortingField: MarketModule.SortingField = .highestCap {
