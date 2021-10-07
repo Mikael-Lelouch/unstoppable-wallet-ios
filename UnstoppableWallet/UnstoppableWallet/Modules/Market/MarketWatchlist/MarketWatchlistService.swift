@@ -17,21 +17,13 @@ class MarketWatchlistService: IMarketMultiSortHeaderService {
         }
     }
 
-    private var coinUids = [String]()
-
-    private let sortingFieldRelay = PublishRelay<MarketModule.SortingField>()
     var sortingField: MarketModule.SortingField = .highestCap {
         didSet {
-            sortingFieldRelay.accept(sortingField)
+            syncIfPossible()
         }
     }
 
-    private let marketFieldRelay = PublishRelay<MarketModule.MarketField>()
-    var marketField: MarketModule.MarketField = .price {
-        didSet {
-            marketFieldRelay.accept(marketField)
-        }
-    }
+    private var coinUids = [String]()
 
     init(marketKit: MarketKit.Kit, currencyKit: CurrencyKit.Kit, favoritesManager: FavoritesManager) {
         self.marketKit = marketKit
@@ -63,11 +55,23 @@ class MarketWatchlistService: IMarketMultiSortHeaderService {
         marketKit.marketInfosSingle(coinUids: coinUids, order: .init(field: .marketCap, direction: .descending))
                 .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
                 .subscribe(onSuccess: { [weak self] marketInfos in
-                    self?.state = .loaded(marketInfos: marketInfos)
+                    self?.sync(marketInfos: marketInfos)
                 }, onError: { [weak self] error in
                     self?.state = .failed(error: error)
                 })
                 .disposed(by: syncDisposeBag)
+    }
+
+    private func sync(marketInfos: [MarketInfo]) {
+        state = .loaded(marketInfos: marketInfos.sorted(by: sortingField))
+    }
+
+    private func syncIfPossible() {
+        guard case .loaded(let marketInfos) = state else {
+            return
+        }
+
+        sync(marketInfos: marketInfos)
     }
 
 }
@@ -80,14 +84,6 @@ extension MarketWatchlistService: IMarketListService {
 
     var stateObservable: Observable<MarketListServiceState> {
         stateRelay.asObservable()
-    }
-
-    var sortingFieldObservable: Observable<MarketModule.SortingField> {
-        sortingFieldRelay.asObservable()
-    }
-
-    var marketFieldObservable: Observable<MarketModule.MarketField> {
-        marketFieldRelay.asObservable()
     }
 
     func refresh() {
