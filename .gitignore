@@ -33,3 +33,6 @@ GeneratedMocks.swift
 
 Development.xcconfig
 Production.xcconfig
+.env
+.env.*
+*.pem
